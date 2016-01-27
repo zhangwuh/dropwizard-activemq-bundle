@@ -8,17 +8,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.internal.verification.VerificationModeFactory;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.stubbing.Answer;
 import org.mockito.verification.VerificationMode;
 
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.Destination;
-import javax.jms.MessageConsumer;
-import javax.jms.Queue;
-import javax.jms.Session;
-import javax.jms.TextMessage;
-import javax.jms.Topic;
+import javax.jms.*;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -83,7 +78,12 @@ public class ActiveMQReceiverHandlerTest {
 
         messageIndex = 0;
         messagesList = messages;
-        when(messageConsumer.receive(anyLong())).then( (i) -> popMessage());
+        when(messageConsumer.receive(anyLong())).then( new Answer(){
+            @Override
+            public Object answer(InvocationOnMock invocationOnMock) throws Throwable {
+                return popMessage();
+            }
+        });
         receivedMessages.clear();
         receivedExceptions.clear();
     }
@@ -130,13 +130,23 @@ public class ActiveMQReceiverHandlerTest {
     @Test
     public void testNormal() throws Exception {
         setUpMocks(Arrays.asList(null, "a", "b", null, "d"));
-        ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<>(
+        ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<String>(
                 destinationName,
                 connectionFactory,
-                (m)->receiveMessage((String)m),
+                new ActiveMQReceiver<String>(){
+                    @Override
+                    public void receive(String message) {
+                        receiveMessage(message);
+                    }
+                },
                 String.class,
                 objectMapper,
-                (m,e) -> exceptionHandler(m,e),
+                new ActiveMQBaseExceptionHandler(){
+                    @Override
+                    public boolean onException(Message jmsMessage, String message, Exception exception) {
+                        return exceptionHandler(message,exception);
+                    }
+                },
                 1);
 
         h.start();
@@ -158,10 +168,22 @@ public class ActiveMQReceiverHandlerTest {
         ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<>(
                 destinationName,
                 connectionFactory,
-                (m)->receiveMessage((String)m),
+                new ActiveMQReceiver<String>(){
+
+                    @Override
+                    public void receive(String message) {
+                        receiveMessage(message);
+                    }
+                },
                 String.class,
                 objectMapper,
-                (m,e) -> exceptionHandler(m,e),
+                new ActiveMQBaseExceptionHandler(){
+
+                    @Override
+                    public boolean onException(Message jmsMessage, String message, Exception exception) {
+                        return exceptionHandler(message,exception);
+                    }
+                },
                 1);
 
         h.start();
@@ -184,10 +206,22 @@ public class ActiveMQReceiverHandlerTest {
         ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<>(
                 destinationName,
                 connectionFactory,
-                (m)->receiveMessage(m),
+                new ActiveMQReceiver<String>(){
+
+                    @Override
+                    public void receive(String message) {
+                        receiveMessage(message);
+                    }
+                },
                 String.class,
                 objectMapper,
-                (m,e) -> exceptionHandler(m,e),
+                new ActiveMQBaseExceptionHandler(){
+
+                    @Override
+                    public boolean onException(Message jmsMessage, String message, Exception exception) {
+                        return exceptionHandler(message,exception);
+                    }
+                },
                 1);
 
         h.start();
@@ -211,10 +245,22 @@ public class ActiveMQReceiverHandlerTest {
         ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<>(
                 destinationName,
                 connectionFactory,
-                (m)->receiveMessage(m),
+                new ActiveMQReceiver<String>(){
+
+                    @Override
+                    public void receive(String message) {
+                        receiveMessage(message);
+                    }
+                },
                 String.class,
                 objectMapper,
-                (m,e) -> exceptionHandler(m, e),
+                new ActiveMQBaseExceptionHandler(){
+
+                    @Override
+                    public boolean onException(Message jmsMessage, String message, Exception exception) {
+                        return exceptionHandler(message,exception);
+                    }
+                },
                 1);
 
         h.start();

@@ -1,6 +1,7 @@
 package com.kjetland.dropwizard.activemq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,6 @@ import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public class ActiveMQSenderImpl implements ActiveMQSender {
@@ -61,19 +61,23 @@ public class ActiveMQSenderImpl implements ActiveMQSender {
 
     }
 
-    private void internalSend(String json) throws JMSException {
+    private void internalSend(final String json) throws JMSException {
         if (log.isDebugEnabled()) {
             log.debug("Sending to {}: {}", destination, json);
         }
-        internalSend( session -> {
-            final TextMessage textMessage = session.createTextMessage(json);
-            textMessage.setText(json);
-            String correlationId = ActiveMQBundle.correlationID.get();
-            if (textMessage.getJMSCorrelationID() == null && correlationId != null) {
-                textMessage.setJMSCorrelationID(correlationId);
-            }
-            return textMessage;
-        } );
+        internalSend(
+                new JMSFunction<Session, Message>() {
+                    @Override
+                    public Message apply(Session session) throws JMSException {
+                        final TextMessage textMessage = session.createTextMessage(json);
+                        textMessage.setText(json);
+                        String correlationId = ActiveMQBundle.correlationID.get();
+                        if (textMessage.getJMSCorrelationID() == null && correlationId != null) {
+                            textMessage.setJMSCorrelationID(correlationId);
+                        }
+                        return textMessage;
+                    }
+                });
     }
 
     private void internalSend(JMSFunction<Session, Message> messageCreator) throws JMSException {
@@ -100,14 +104,30 @@ public class ActiveMQSenderImpl implements ActiveMQSender {
                     messageProducer.send(message);
 
                 } finally {
-                    ActiveMQUtils.silent(() -> messageProducer.close());
+                    ActiveMQUtils.silent(
+                    new ActiveMQUtils.RunnableThrowsAll(){
+                        @Override
+                        public void run() throws Exception {
+                            messageProducer.close();
+                        }
+                    });
                 }
             } finally {
-                ActiveMQUtils.silent(() -> session.close());
+                ActiveMQUtils.silent(new ActiveMQUtils.RunnableThrowsAll(){
+                    @Override
+                    public void run() throws Exception {
+                        session.close();
+                    }
+                });
             }
 
         } finally {
-            ActiveMQUtils.silent(() -> connection.close());
+            ActiveMQUtils.silent(new ActiveMQUtils.RunnableThrowsAll(){
+                @Override
+                public void run() throws Exception {
+                    connection.close();
+                }
+            });
         }
 
 

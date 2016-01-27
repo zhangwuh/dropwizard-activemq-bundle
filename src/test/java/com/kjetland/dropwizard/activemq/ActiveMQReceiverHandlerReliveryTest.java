@@ -1,6 +1,7 @@
 package com.kjetland.dropwizard.activemq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.jms.pool.PooledConnectionFactory;
@@ -8,7 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Optional;
+import javax.jms.Message;
 
 import static org.junit.Assert.assertEquals;
 
@@ -75,18 +76,28 @@ public class ActiveMQReceiverHandlerReliveryTest {
 
         ObjectMapper objectMapper = new ObjectMapper();
 
-        ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<>(
+        ActiveMQReceiverHandler<String> h = new ActiveMQReceiverHandler<String>(
                 destinationName,
                 connectionFactory,
-                (m)->receiveMessage(m),
+                new ActiveMQReceiver<String>(){
+                    @Override
+                    public void receive(String message) {
+                        receiveMessage(message);
+                    }
+                },
                 String.class,
                 objectMapper,
-                (m,e) -> exceptionHandler(m,e),
+                new ActiveMQBaseExceptionHandler(){
+                    @Override
+                    public boolean onException(Message jmsMessage, String message, Exception exception) {
+                        return exceptionHandler(message,exception);
+                    }
+                },
                 1);
 
         h.start();
 
-        ActiveMQSender sender = new ActiveMQSenderImpl(connectionFactory, objectMapper, destinationName, Optional.<Integer>empty(), false);
+        ActiveMQSender sender = new ActiveMQSenderImpl(connectionFactory, objectMapper, destinationName, Optional.<Integer>absent(), false);
 
         sender.sendJson("fail");
         sender.sendJson("ok1");

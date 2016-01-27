@@ -57,6 +57,11 @@
             <version>${activemq.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>18.0</version>
+        </dependency>
     </dependencies>
 
 
@@ -66,8 +71,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>1.7</source>
+                    <target>1.7</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -116,13 +121,13 @@
         </repository>
     </repositories>
 
-    <distributionManagement>
+<!--    <distributionManagement>
         <repository>
             <id>mbk_mvn_repo</id>
             <layout>default</layout>
             <name>mbk_mvn_repo</name>
             <url>file:///projects/git/mbknor.github.com/m2repo/releases</url>
         </repository>
-    </distributionManagement>
+    </distributionManagement>-->
 
 </project>

@@ -18,15 +18,15 @@ public class ActiveMQHealthCheck extends HealthCheck {
     @Override
     protected Result check() throws Exception {
 
-        Connection connection = connectionFactory.createConnection();
+        final Connection connection = connectionFactory.createConnection();
         connection.start();
         try {
-            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            final Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
             try {
-                TemporaryQueue tempQueue = session.createTemporaryQueue();
+                final TemporaryQueue tempQueue = session.createTemporaryQueue();
 
                 try {
-                    MessageProducer producer = session.createProducer(tempQueue);
+                    final MessageProducer producer = session.createProducer(tempQueue);
                     try {
                         producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
 
@@ -34,7 +34,7 @@ public class ActiveMQHealthCheck extends HealthCheck {
 
                         producer.send(tempQueue, session.createTextMessage(messageText));
 
-                        MessageConsumer consumer = session.createConsumer(tempQueue);
+                        final MessageConsumer consumer = session.createConsumer(tempQueue);
 
                         try {
                             // Wait for our testMessage
@@ -48,19 +48,44 @@ public class ActiveMQHealthCheck extends HealthCheck {
                                         millisecondsToWait + " milliseconds");
                             }
                         } finally {
-                            swallowException(() -> consumer.close());
+                            swallowException(new DoCleanup(){
+                                @Override
+                                public void doCleanup() throws Exception {
+                                    consumer.close();
+                                }
+                            });
                         }
                     } finally {
-                        swallowException(() -> producer.close());
+                        swallowException(new DoCleanup(){
+                            @Override
+                            public void doCleanup() throws Exception {
+                                producer.close();
+                            }
+                        } );
                     }
                 } finally {
-                    swallowException(() -> tempQueue.delete());
+                    swallowException(new DoCleanup(){
+                        @Override
+                        public void doCleanup() throws Exception {
+                            tempQueue.delete();
+                        }
+                    } );
                 }
             } finally {
-                swallowException(() -> session.close());
+                swallowException(new DoCleanup(){
+                    @Override
+                    public void doCleanup() throws Exception {
+                        session.close();
+                    }
+                });
             }
         } finally {
-            swallowException(() -> connection.close());
+            swallowException(new DoCleanup(){
+                @Override
+                public void doCleanup() throws Exception {
+                    connection.close();
+                }
+            });
         }
     }
 

@@ -1,6 +1,7 @@
 package com.kjetland.dropwizard.activemq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,7 +17,6 @@ import javax.jms.MessageProducer;
 import javax.jms.Queue;
 import javax.jms.Session;
 import javax.jms.TextMessage;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -54,33 +54,23 @@ public class ActiveMQSenderImplTest {
         final String queueName = "myQueue";
         final String myJson = "{'a': 2, 'b': 'Some text'}";
         final String myCorrelationId = UUID.randomUUID().toString();
-        final ActiveMQSender sender = new ActiveMQSenderImpl(connectionFactory, objectMapper, queueName, Optional.<Integer>empty(), false);
+        final ActiveMQSender sender = new ActiveMQSenderImpl(connectionFactory, objectMapper, queueName, Optional.<Integer>absent(), false);
 
         when(session.createQueue(queueName)).thenReturn(queue);
         when(session.createProducer(queue)).thenReturn(messageProducer);
         when(session.createTextMessage()).thenReturn(textMessage);
 
         // Send a message
-        sender.send((Session session) -> {
-            TextMessage message = session.createTextMessage();
-            message.setText(myJson);
-            message.setJMSCorrelationID(myCorrelationId);
-            message.setJMSReplyTo(queue);
-            return message;
-        });
-/*
-        sender.send((Session session) -> {
-            try {
+        sender.send(new JMSFunction(){
+            @Override
+            public Object apply(Object o) throws JMSException {
                 TextMessage message = session.createTextMessage();
                 message.setText(myJson);
                 message.setJMSCorrelationID(myCorrelationId);
                 message.setJMSReplyTo(queue);
                 return message;
-            } catch (JMSException e) {
-                throw new RuntimeException(e);
             }
         });
-*/
 
         // Verify that the message was constructed as intended
         verify(textMessage).setText(myJson);
@@ -102,7 +92,7 @@ public class ActiveMQSenderImplTest {
         final String queueName = "myQueue";
         final String myJson = "{'a': 2, 'b': 'Some text'}";
         final String myCorrelationId = UUID.randomUUID().toString();
-        final ActiveMQSender sender = new ActiveMQSenderImpl(connectionFactory, objectMapper, queueName, Optional.<Integer>empty(), false);
+        final ActiveMQSender sender = new ActiveMQSenderImpl(connectionFactory, objectMapper, queueName, Optional.<Integer>absent(), false);
         final JMSException thrownException = new JMSException("Test");
 
         when(session.createQueue(queueName)).thenReturn(queue);
@@ -112,11 +102,14 @@ public class ActiveMQSenderImplTest {
         // Send a message and verify that a wrapped RuntimeException is thrown
         try {
 
-            sender.send((Session session) -> {
-                TextMessage message = session.createTextMessage();
-                message.setText(myJson);
-                message.setJMSCorrelationID(myCorrelationId);
-                return message;
+            sender.send(new JMSFunction(){
+                @Override
+                public Object apply(Object o) throws JMSException {
+                    TextMessage message = session.createTextMessage();
+                    message.setText(myJson);
+                    message.setJMSCorrelationID(myCorrelationId);
+                    return message;
+                }
             });
             /*
             sender.send((Session session) -> {

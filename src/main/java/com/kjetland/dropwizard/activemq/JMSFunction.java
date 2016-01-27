@@ -9,7 +9,6 @@ import javax.jms.JMSException;
  * @param <T> The type of the input to the function
  * @param <R> The type of the result of the function
  */
-@FunctionalInterface
 public interface JMSFunction<T, R> {
     R apply(T t) throws JMSException;
 }

@@ -1,6 +1,7 @@
 package com.kjetland.dropwizard.activemq;
 
-import java.util.Optional;
+
+import com.google.common.base.Optional;
 
 public interface ActiveMQSenderFactory {
     ActiveMQSender createSender(String destination, boolean persistent);

@@ -203,14 +203,29 @@ public class ActiveMQReceiverHandler<T> implements Managed, Runnable {
                             runReceiveLoop(messageConsumer);
                         } finally {
                             isReceiving.set(false);
-                            ActiveMQUtils.silent(() -> messageConsumer.close());
+                            ActiveMQUtils.silent(new ActiveMQUtils.RunnableThrowsAll(){
+                                @Override
+                                public void run() throws Exception {
+                                    messageConsumer.close();
+                                }
+                            });
                         }
                     } finally {
-                        ActiveMQUtils.silent(() -> session.close());
+                        ActiveMQUtils.silent(new ActiveMQUtils.RunnableThrowsAll(){
+                            @Override
+                            public void run() throws Exception {
+                                session.close();
+                            }
+                        });
                     }
 
                 } finally {
-                    ActiveMQUtils.silent(() -> connection.close());
+                    ActiveMQUtils.silent(new ActiveMQUtils.RunnableThrowsAll(){
+                        @Override
+                        public void run() throws Exception {
+                            connection.close();
+                        }
+                    });
                 }
             } catch (Throwable e) {
                 errorsInARowCount++;
@@ -236,7 +251,13 @@ public class ActiveMQReceiverHandler<T> implements Managed, Runnable {
                 // Prevent using too much CPU when stuff does not work
                 if (continuingErrorSituation) {
                     log.warn("Numbers of errors in a row {} - Going to sleep {} mills before retrying", errorsInARowCount, SLEEP_TIME_MILLS);
-                    ActiveMQUtils.silent(() -> Thread.sleep(SLEEP_TIME_MILLS));
+                    ActiveMQUtils.silent(new ActiveMQUtils.RunnableThrowsAll(){
+
+                        @Override
+                        public void run() throws Exception {
+                            Thread.sleep(SLEEP_TIME_MILLS);
+                        }
+                    });
                 }
             }
         }

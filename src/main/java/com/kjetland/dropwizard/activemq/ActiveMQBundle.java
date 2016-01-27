@@ -1,6 +1,7 @@
 package com.kjetland.dropwizard.activemq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
 import io.dropwizard.ConfiguredBundle;
 import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.setup.Bootstrap;
@@ -10,7 +11,7 @@ import org.apache.activemq.jms.pool.PooledConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
+import javax.jms.Message;
 
 public class ActiveMQBundle implements ConfiguredBundle<ActiveMQConfigHolder>, Managed, ActiveMQSenderFactory {
 
@@ -32,9 +33,9 @@ public class ActiveMQBundle implements ConfiguredBundle<ActiveMQConfigHolder>, M
         this.environment = environment;
         final String brokerUrl = configuration.getActiveMQ().brokerUrl;
         final int configuredTTL = configuration.getActiveMQ().timeToLiveInSeconds;
-        final Optional<String> username = Optional.ofNullable(configuration.getActiveMQ().brokerUsername);
-        final Optional<String> password = Optional.ofNullable(configuration.getActiveMQ().brokerPassword);
-        defaultTimeToLiveInSeconds = Optional.ofNullable(configuredTTL > 0 ? configuredTTL : null);
+        final Optional<String> username = Optional.fromNullable(configuration.getActiveMQ().brokerUsername);
+        final Optional<String> password = Optional.fromNullable(configuration.getActiveMQ().brokerPassword);
+        defaultTimeToLiveInSeconds = Optional.fromNullable(configuredTTL > 0 ? configuredTTL : null);
 
         log.info("Setting up activeMq with brokerUrl {}", brokerUrl);
 
@@ -135,13 +136,22 @@ public class ActiveMQBundle implements ConfiguredBundle<ActiveMQConfigHolder>, M
                 receiver,
                 clazz,
                 objectMapper,
-                (message, exception) -> {
-                    if (ackMessageOnException) {
-                        log.error("Error processing received message - acknowledging it anyway", exception);
-                        return true;
-                    } else {
-                        log.error("Error processing received message - NOT acknowledging it", exception);
-                        return false;
+                new ActiveMQExceptionHandler() {
+
+                    @Override
+                    public boolean onException(Message jmsMessage, String message, Exception exception) {
+                        return onException(message, exception);
+                    }
+
+                    @Override
+                    public boolean onException(String message, Exception exception) {
+                        if(ackMessageOnException) {
+                            log.error("Error processing received message - acknowledging it anyway", exception);
+                            return true;
+                        }else {
+                            log.error("Error processing received message - NOT acknowledging it", exception);
+                            return false;
+                        }
                     }
                 },
                 shutdownWaitInSeconds
